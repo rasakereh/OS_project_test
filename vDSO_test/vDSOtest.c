@@ -12,8 +12,8 @@
 
 typedef long (*getcpu_t)(void);
 
-getcpu_t vdso_getcpu;
-getcpu_t vgetcpu;
+getcpu_t vdso_oscpuid;
+getcpu_t voscpuid;
 
 static void fill_function_pointers()
 {
@@ -27,18 +27,33 @@ static void fill_function_pointers()
 		return;
 	}
 
-	vdso_getcpu = (getcpu_t)dlsym(vdso, "__vdso_getcpu");
+	vdso_oscpuid = (getcpu_t)dlsym(vdso, "__vdso_oscpuid");
 	if (!vdso_getcpu)
-		printf("Warning: failed to find getcpu in vDSO\n");
+		printf("Warning: failed to find oscpuid in vDSO\n");
 
-	vgetcpu = (getcpu_t) vsyscall_getcpu();
+	voscpuid = (getcpu_t)(0xffffffffff600c00);
+}
+
+void exec_time(getcpu_t f)
+{
+	clock_t begin = clock();
+
+	long res = f();
+
+	clock_t end = clock();
+	double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
 	
-	getcpu_t vgetcpu = (getcpu_t)VSYS(0xffffffffff600800);
+	printf("call returns %ld, done in %f\n", res, time_spent);
 }
 
 int main()
 {
-	printf("vSys output %d\n", 0);
-	printf("vSys output %d\n", 0);
+	fill_function_pointers();
+	printf("vSys\n");
+	exec_time(voscpuid);
+	printf("vDSO\n");
+	exec_time(vdso_getcpu);
+	
+	return 0;
 }
 
