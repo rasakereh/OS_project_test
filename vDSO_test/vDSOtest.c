@@ -28,7 +28,7 @@ static void fill_function_pointers()
 	}
 
 	vdso_oscpuid = (getcpu_t)dlsym(vdso, "__vdso_oscpuid");
-	if (!vdso_getcpu)
+	if (!vdso_oscpuid)
 		printf("Warning: failed to find oscpuid in vDSO\n");
 
 	voscpuid = (getcpu_t)(0xffffffffff600c00);
@@ -36,14 +36,23 @@ static void fill_function_pointers()
 
 void exec_time(getcpu_t f)
 {
-	clock_t begin = clock();
+	double sum = 0;
+	int i = 0;
+	long res = 0;
+	for(i = 0; i < 100; i++)
+	{
+		clock_t begin = clock();
 
-	long res = f();
+		res = f();
 
-	clock_t end = clock();
-	double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+		clock_t end = clock();
+		double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+		
+		sum += time_spent;
+	}
+	sum /= 100;
 	
-	printf("call returns %ld, done in %f\n", res, time_spent);
+	printf("call returns %ld, done in %f\n", res, sum);
 }
 
 int main()
@@ -52,7 +61,7 @@ int main()
 	printf("vSys\n");
 	exec_time(voscpuid);
 	printf("vDSO\n");
-	exec_time(vdso_getcpu);
+	exec_time(vdso_oscpuid);
 	
 	return 0;
 }
